@@ -1,6 +1,7 @@
 import streamlit as st
 import pandas as pd
 import numpy as np
+import os
 
 from sklearn.model_selection import train_test_split
 from sklearn.preprocessing import OneHotEncoder, StandardScaler
@@ -37,21 +38,21 @@ st.caption("Stacking Ensemble • Reduced Features")
 st.markdown("---")
 
 # =================================
-# FILE UPLOAD (FIX)
+# LOAD DATA (SAFE WAY)
 # =================================
-uploaded_file = st.file_uploader(
-    "📂 Upload Loan Dataset (CSV)",
-    type=["csv"]
-)
+DATA_FILE = "train_u6lujuX_CVtuZ9i.csv"
 
-if uploaded_file is None:
-    st.warning("Please upload the dataset to continue.")
+if not os.path.exists(DATA_FILE):
+    st.error(
+        f"❌ Dataset not found!\n\n"
+        f"Please make sure **{DATA_FILE}** is in the same folder as **app.py**."
+    )
     st.stop()
 
-data = pd.read_csv(uploaded_file)
+data = pd.read_csv(DATA_FILE)
 
 # =================================
-# FEATURE SELECTION (4 FEATURES)
+# FEATURE SELECTION (ONLY 4 FEATURES)
 # =================================
 selected_features = [
     "Credit_History",
@@ -147,7 +148,7 @@ if st.sidebar.button("🔮 Predict Loan Status"):
     st.session_state.prediction = model.predict(input_data)[0]
 
 # =================================
-# RESULT (DIRECT DISPLAY)
+# RESULT DISPLAY (DIRECT)
 # =================================
 st.markdown("## 📌 Prediction Result")
 
