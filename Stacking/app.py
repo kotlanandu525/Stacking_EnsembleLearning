@@ -37,16 +37,21 @@ st.caption("Stacking Ensemble • Reduced Features")
 st.markdown("---")
 
 # =================================
-# LOAD DATA
+# FILE UPLOAD (FIX)
 # =================================
-@st.cache_data
-def load_data():
-    return pd.read_csv("train_u6lujuX_CVtuZ9i.csv")
+uploaded_file = st.file_uploader(
+    "📂 Upload Loan Dataset (CSV)",
+    type=["csv"]
+)
 
-data = load_data()
+if uploaded_file is None:
+    st.warning("Please upload the dataset to continue.")
+    st.stop()
+
+data = pd.read_csv(uploaded_file)
 
 # =================================
-# USE ONLY 4 FEATURES
+# FEATURE SELECTION (4 FEATURES)
 # =================================
 selected_features = [
     "Credit_History",
@@ -108,7 +113,10 @@ model = Pipeline([
 # TRAIN MODEL
 # =================================
 X_train, X_test, y_train, y_test = train_test_split(
-    X, y, test_size=0.2, random_state=42, stratify=y
+    X, y,
+    test_size=0.2,
+    random_state=42,
+    stratify=y
 )
 
 with st.spinner("Training model..."):
@@ -139,12 +147,12 @@ if st.sidebar.button("🔮 Predict Loan Status"):
     st.session_state.prediction = model.predict(input_data)[0]
 
 # =================================
-# MAIN RESULT DISPLAY (DIRECT)
+# RESULT (DIRECT DISPLAY)
 # =================================
 st.markdown("## 📌 Prediction Result")
 
 if st.session_state.prediction is None:
-    st.info("👈 Enter applicant details and click **Predict Loan Status**")
+    st.info("👈 Enter details and click **Predict Loan Status**")
 else:
     if st.session_state.prediction == 1:
         st.success("🎉 **LOAN APPROVED**")
@@ -157,7 +165,7 @@ else:
 st.markdown("---")
 col1, col2, col3 = st.columns(3)
 
-col1.metric("🎯 Model Accuracy", f"{accuracy*100:.2f}%")
+col1.metric("🎯 Accuracy", f"{accuracy*100:.2f}%")
 col2.metric("🧠 Features Used", 4)
 col3.metric("📦 Dataset Size", data.shape[0])
 
@@ -166,6 +174,6 @@ col3.metric("📦 Dataset Size", data.shape[0])
 # =================================
 st.markdown("---")
 st.markdown(
-    "<center><b>Loan Prediction System</b> | Stacking Ensemble | Streamlit</center>",
+    "<center><b>Loan Approval Prediction</b> | Stacking Ensemble | Streamlit</center>",
     unsafe_allow_html=True
 )
