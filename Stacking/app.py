@@ -38,21 +38,23 @@ st.caption("Stacking Ensemble • Reduced Features")
 st.markdown("---")
 
 # =================================
-# LOAD DATA (SAFE WAY)
+# LOAD DATA (CORRECT PATH FIX)
 # =================================
-DATA_FILE = "train_u6lujuX_CVtuZ9i.csv"
+BASE_DIR = os.path.dirname(os.path.abspath(__file__))
+DATA_FILE = os.path.join(BASE_DIR, "train_u6lujuX_CVtuZ9i.csv")
 
 if not os.path.exists(DATA_FILE):
-    st.error(
-        f"❌ Dataset not found!\n\n"
-        f"Please make sure **{DATA_FILE}** is in the same folder as **app.py**."
+    st.error("❌ Dataset not found in application directory.")
+    st.info(
+        "📌 Ensure **train_u6lujuX_CVtuZ9i.csv** is in the SAME folder as **app.py**.\n\n"
+        "If deploying to Streamlit Cloud, the CSV must be committed to GitHub."
     )
     st.stop()
 
 data = pd.read_csv(DATA_FILE)
 
 # =================================
-# FEATURE SELECTION (ONLY 4 FEATURES)
+# FEATURE SELECTION (ONLY 4)
 # =================================
 selected_features = [
     "Credit_History",
@@ -114,10 +116,7 @@ model = Pipeline([
 # TRAIN MODEL
 # =================================
 X_train, X_test, y_train, y_test = train_test_split(
-    X, y,
-    test_size=0.2,
-    random_state=42,
-    stratify=y
+    X, y, test_size=0.2, random_state=42, stratify=y
 )
 
 with st.spinner("Training model..."):
@@ -148,7 +147,7 @@ if st.sidebar.button("🔮 Predict Loan Status"):
     st.session_state.prediction = model.predict(input_data)[0]
 
 # =================================
-# RESULT DISPLAY (DIRECT)
+# RESULT (DIRECT DISPLAY)
 # =================================
 st.markdown("## 📌 Prediction Result")
 
