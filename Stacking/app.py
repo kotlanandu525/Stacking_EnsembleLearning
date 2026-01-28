@@ -15,63 +15,79 @@ from sklearn.ensemble import RandomForestClassifier, StackingClassifier
 
 from sklearn.metrics import accuracy_score
 
-# =================================
+# ==================================================
 # PAGE CONFIG
-# =================================
+# ==================================================
 st.set_page_config(
-    page_title="Loan Approval Prediction",
+    page_title="Smart Loan Approval System",
     page_icon="🏦",
     layout="wide"
 )
 
-# =================================
+# ==================================================
 # SESSION STATE
-# =================================
+# ==================================================
 if "prediction" not in st.session_state:
     st.session_state.prediction = None
+if "base_preds" not in st.session_state:
+    st.session_state.base_preds = {}
 
-# =================================
-# TITLE
-# =================================
-st.title("🏦 Loan Approval Prediction System")
-st.caption("Stacking Ensemble • Reduced Features")
+# ==================================================
+# TITLE & DESCRIPTION
+# ==================================================
+st.title("🎯 Smart Loan Approval System – Stacking Model")
+st.markdown(
+    """
+    **This system uses a Stacking Ensemble Machine Learning model to predict whether a loan
+    will be approved by combining multiple ML models for better decision making.**
+    """
+)
 st.markdown("---")
 
-# =================================
-# LOAD DATA (CORRECT PATH FIX)
-# =================================
+# ==================================================
+# LOAD DATA (SAFE PATH)
+# ==================================================
 BASE_DIR = os.path.dirname(os.path.abspath(__file__))
 DATA_FILE = os.path.join(BASE_DIR, "train_u6lujuX_CVtuZ9i.csv")
 
 if not os.path.exists(DATA_FILE):
-    st.error("❌ Dataset not found in application directory.")
-    st.info(
-        "📌 Ensure **train_u6lujuX_CVtuZ9i.csv** is in the SAME folder as **app.py**.\n\n"
-        "If deploying to Streamlit Cloud, the CSV must be committed to GitHub."
-    )
+    st.error("Dataset not found. Ensure CSV is in the same folder as app.py")
     st.stop()
 
 data = pd.read_csv(DATA_FILE)
 
-# =================================
-# FEATURE SELECTION (ONLY 4)
-# =================================
-selected_features = [
-    "Credit_History",
+# ==================================================
+# SELECT FEATURES
+# ==================================================
+features = [
     "ApplicantIncome",
+    "CoapplicantIncome",
     "LoanAmount",
+    "Loan_Amount_Term",
+    "Credit_History",
+    "Self_Employed",
     "Property_Area"
 ]
 
-X = data[selected_features]
+X = data[features]
 y = data["Loan_Status"].map({"Y": 1, "N": 0})
 
-num_features = ["Credit_History", "ApplicantIncome", "LoanAmount"]
-cat_features = ["Property_Area"]
+num_features = [
+    "ApplicantIncome",
+    "CoapplicantIncome",
+    "LoanAmount",
+    "Loan_Amount_Term",
+    "Credit_History"
+]
 
-# =================================
+cat_features = [
+    "Self_Employed",
+    "Property_Area"
+]
+
+# ==================================================
 # PREPROCESSING
-# =================================
+# ==================================================
 num_pipeline = Pipeline([
     ("imputer", SimpleImputer(strategy="median")),
     ("scaler", StandardScaler())
@@ -87,24 +103,21 @@ preprocessor = ColumnTransformer([
     ("cat", cat_pipeline, cat_features)
 ])
 
-# =================================
-# STACKING MODEL
-# =================================
-base_models = [
-    ("lr", LogisticRegression(max_iter=1000)),
-    ("dt", DecisionTreeClassifier(max_depth=4, random_state=42)),
-    ("rf", RandomForestClassifier(
-        n_estimators=120,
-        max_depth=6,
-        random_state=42
-    ))
-]
+# ==================================================
+# MODELS
+# ==================================================
+lr = LogisticRegression(max_iter=1000)
+dt = DecisionTreeClassifier(max_depth=4, random_state=42)
+rf = RandomForestClassifier(n_estimators=120, max_depth=6, random_state=42)
 
 stack_model = StackingClassifier(
-    estimators=base_models,
+    estimators=[
+        ("Logistic Regression", lr),
+        ("Decision Tree", dt),
+        ("Random Forest", rf)
+    ],
     final_estimator=LogisticRegression(),
-    cv=5,
-    n_jobs=-1
+    cv=5
 )
 
 model = Pipeline([
@@ -112,68 +125,129 @@ model = Pipeline([
     ("stacking", stack_model)
 ])
 
-# =================================
+# ==================================================
 # TRAIN MODEL
-# =================================
+# ==================================================
 X_train, X_test, y_train, y_test = train_test_split(
     X, y, test_size=0.2, random_state=42, stratify=y
 )
 
-with st.spinner("Training model..."):
-    model.fit(X_train, y_train)
-
+model.fit(X_train, y_train)
 accuracy = accuracy_score(y_test, model.predict(X_test))
 
-# =================================
+# ==================================================
 # SIDEBAR INPUTS
-# =================================
+# ==================================================
 st.sidebar.header("🧾 Applicant Details")
 
-Credit_History = st.sidebar.selectbox("Credit History", [1.0, 0.0])
 ApplicantIncome = st.sidebar.number_input("Applicant Income", min_value=0)
+CoapplicantIncome = st.sidebar.number_input("Co-Applicant Income", min_value=0)
 LoanAmount = st.sidebar.number_input("Loan Amount", min_value=0)
-Property_Area = st.sidebar.selectbox(
-    "Property Area", ["Urban", "Semiurban", "Rural"]
+Loan_Amount_Term = st.sidebar.number_input("Loan Amount Term", min_value=0)
+
+Credit_History = st.sidebar.radio(
+    "Credit History",
+    ["Yes", "No"]
 )
 
-if st.sidebar.button("🔮 Predict Loan Status"):
-    input_data = pd.DataFrame([{
-        "Credit_History": Credit_History,
+Employment_Status = st.sidebar.selectbox(
+    "Employment Status",
+    ["Salaried", "Self-Employed"]
+)
+
+Property_Area = st.sidebar.selectbox(
+    "Property Area",
+    ["Urban", "Semiurban", "Rural"]
+)
+
+# ==================================================
+# STACKING ARCHITECTURE DISPLAY
+# ==================================================
+st.subheader("🧠 Model Architecture (Stacking Ensemble)")
+st.markdown(
+    """
+    **Base Models Used:**
+    - Logistic Regression  
+    - Decision Tree  
+    - Random Forest  
+
+    **Meta Model Used:**
+    - Logistic Regression  
+
+    📌 *Base models generate individual predictions which are combined by the meta-model
+    to produce the final decision.*
+    """
+)
+
+st.markdown("---")
+
+# ==================================================
+# PREDICTION BUTTON
+# ==================================================
+if st.sidebar.button("🔘 Check Loan Eligibility (Stacking Model)"):
+    input_df = pd.DataFrame([{
         "ApplicantIncome": ApplicantIncome,
+        "CoapplicantIncome": CoapplicantIncome,
         "LoanAmount": LoanAmount,
+        "Loan_Amount_Term": Loan_Amount_Term,
+        "Credit_History": 1.0 if Credit_History == "Yes" else 0.0,
+        "Self_Employed": "Yes" if Employment_Status == "Self-Employed" else "No",
         "Property_Area": Property_Area
     }])
 
-    st.session_state.prediction = model.predict(input_data)[0]
+    # Base model predictions
+    X_processed = preprocessor.fit_transform(X_train)
+    X_input_processed = preprocessor.transform(input_df)
 
-# =================================
-# RESULT (DIRECT DISPLAY)
-# =================================
-st.markdown("## 📌 Prediction Result")
+    st.session_state.base_preds = {
+        "Logistic Regression": lr.fit(X_processed, y_train).predict(X_input_processed)[0],
+        "Decision Tree": dt.fit(X_processed, y_train).predict(X_input_processed)[0],
+        "Random Forest": rf.fit(X_processed, y_train).predict(X_input_processed)[0],
+    }
 
-if st.session_state.prediction is None:
-    st.info("👈 Enter details and click **Predict Loan Status**")
-else:
+    st.session_state.prediction = model.predict(input_df)[0]
+
+# ==================================================
+# OUTPUT SECTION
+# ==================================================
+st.subheader("📌 Loan Eligibility Result")
+
+if st.session_state.prediction is not None:
     if st.session_state.prediction == 1:
-        st.success("🎉 **LOAN APPROVED**")
+        st.success("✅ **LOAN APPROVED**")
     else:
-        st.error("🚫 **LOAN REJECTED**")
+        st.error("❌ **LOAN REJECTED**")
 
-# =================================
-# MODEL INFO
-# =================================
-st.markdown("---")
-col1, col2, col3 = st.columns(3)
+    st.markdown("### 📊 Base Model Predictions")
+    for model_name, pred in st.session_state.base_preds.items():
+        st.write(f"**{model_name}** → {'Approved' if pred == 1 else 'Rejected'}")
 
-col1.metric("🎯 Accuracy", f"{accuracy*100:.2f}%")
-col2.metric("🧠 Features Used", 4)
-col3.metric("📦 Dataset Size", data.shape[0])
+    st.markdown("### 🧠 Final Stacking Decision")
+    st.write("The meta-model combines all base model outputs to make the final decision.")
 
-# =================================
+    # ==================================================
+    # BUSINESS EXPLANATION (MANDATORY)
+    # ==================================================
+    st.markdown("### 💼 Business Explanation")
+    if st.session_state.prediction == 1:
+        st.write(
+            "Based on income stability, credit history, and combined predictions from multiple models, "
+            "the applicant is likely to repay the loan. Therefore, the stacking model predicts **loan approval**."
+        )
+    else:
+        st.write(
+            "Based on income patterns, credit risk, and combined predictions from multiple models, "
+            "the applicant is unlikely to repay the loan. Therefore, the stacking model predicts **loan rejection**."
+        )
+
+else:
+    st.info("👈 Enter applicant details and click **Check Loan Eligibility**")
+
+# ==================================================
 # FOOTER
-# =================================
+# ==================================================
 st.markdown("---")
 st.markdown(
-    "<center><b>Loan Approval Prediction</b> | Stacking Ensemble | Streamlit</center>",
+    "<center><b>Smart Loan Approval System</b> | Stacking Ensemble | Streamlit</center>",
     unsafe_allow_html=True
 )
